@@ -69,6 +69,7 @@ npm run dev
 | 分群比较 | `user_segment` | 比较方案 | 方案编号、群体A、群体B |
 | 事件追踪 | `event_track` | 事件定义 | 事件编号、事件名称、事件属性 |
 | 排行榜 | `ranking_board` | 排行方案 | 方案编号、排行指标、排行维度 |
+| 日榜结算 | `daily_ranking` | 日榜结算证据 | 榜单日期、输入版本、入选地区、定稿来源 |
 | 漏斗分析 | `funnel_def` | 漏斗方案 | 方案编号、步骤序列、转化窗口 |
 | 数据集关联 | `dataset_join` | 关联方案 | 方案编号、主数据集、关联数据集 |
 | 报告生成 | `report_builder` | 报告模板 | 模板编号、报告名称、引用指标 |
@@ -80,6 +81,21 @@ npm run dev
   `frontend/src/domain/<模块>.ts`，用于承载真实业务差异并维持36题位容量。
 - 列表接口统一返回 `{ items, total, page, size }`，动作接口统一返回 `{ ok, message }`。
 - 状态流转只允许在 `app/services` 里改，路由层不做业务判断。
+
+## 日榜结算
+
+`daily_ranking` 是排行榜的日榜定稿子域，接口挂在 `/api/daily_ranking/...`
+（专用路由先于通用资源路由注册）：
+
+- `POST /boards` 登记日榜输入，`POST /boards/{date}/adjust` 审核调整金额（输入版本递增）。
+- `POST /boards/{date}/claim` 归档员领取，保存领取瞬间的入选集合（前两名，并列按地区编号定次序）。
+- `POST /boards/{date}/confirm` 定稿确认，把实际排名、入选地区、输入版本和两套候选
+  （已领旧范围 / 有效新榜）写入日榜结算证据；并发确认只写一次。
+- `POST /boards/{date}/snapshot` 生成冻结榜单快照：取证据中实际确认的前两名，
+  按允许公开的列输出；重新进入已确认日榜时返回与定稿一致的对外行和顺位。
+- `POST /boards/{date}/recompute` 备查重算：按保存证据重算位置并留复算记录。
+- 结算数据落盘在 `backend/data/daily_ranking_settlement.json`
+  （可用 `DAILY_RANKING_STORE_PATH` 覆盖），重启后历史快照仍可核对。
 
 领域：数据工程
 子方向：数据分析与数据应用
